@@ -1,26 +1,103 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #1b1b2f;
+  --surface: #232340;
+  --coach-surface: #1e1e38;
+  --text-primary: #e8e0d4;
+  --text-secondary: #9a9ab0;
+  --accent: #d4a03c;
+  --success: #4a9e6d;
+  --warning: #d4a03c;
+  --error: #c44536;
+  --board-light: #e8d5b5;
+  --board-dark: #8b6914;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-dm-sans);
+  --font-mono: var(--font-plex-mono);
 }
 
 body {
   background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text-primary);
+  font-family: var(--font-dm-sans), sans-serif;
+}
+
+.font-heading {
+  font-family: var(--font-crimson-pro), serif;
+}
+
+.font-notation {
+  font-family: var(--font-plex-mono), monospace;
+}
+
+.surface {
+  background: linear-gradient(145deg, rgba(35, 35, 64, 0.98), rgba(27, 27, 47, 0.94));
+  border: 1px solid rgba(232, 224, 212, 0.08);
+  box-shadow: 0 14px 24px rgba(0, 0, 0, 0.25);
+}
+
+.gold-border {
+  border: 1px solid rgba(212, 160, 60, 0.35);
+}
+
+@keyframes punishmentFlash {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes panelShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  60% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes mistakePulse {
+  0% {
+    box-shadow: inset 0 0 0 0 rgba(196, 69, 54, 0.45);
+  }
+  100% {
+    box-shadow: inset 0 0 0 16px rgba(196, 69, 54, 0);
+  }
+}
+
+@keyframes typewriterReveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.punishment-flash {
+  animation: punishmentFlash 500ms ease-out;
+}
+
+.panel-shake {
+  animation: panelShake 450ms ease;
+}
+
+.mistake-pulse {
+  animation: mistakePulse 900ms ease-in-out infinite;
+}
+
+.typewriter-text {
+  animation: typewriterReveal var(--type-duration-ms, 520ms) steps(28, end);
 }
