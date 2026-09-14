@@ -1,3 +1,5 @@
+import type { ExplanationEvidence } from "@/llm/types";
+
 export interface MoveAnalysis {
   isMistake: boolean;
   isPunishable: boolean;
@@ -10,8 +12,12 @@ export interface MoveAnalysis {
   punishmentLineSan: string[];
   continuationLineSan: string[];
   materialChange: number;
+  mateIn: number | null;
+  playedMoveUci: string;
+  playedMoveSan: string;
   reasonDetails: string[];
   explanation?: string;
+  explanationEvidence?: ExplanationEvidence;
 }
 
 export interface BotPreviewOption {

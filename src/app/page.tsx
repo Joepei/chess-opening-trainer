@@ -14,6 +14,7 @@ import { GameSession } from "@/game/session";
 import { DEFAULT_CONFIG, type BotPreview, type GameState, type MoveAnalysis, type TrainerConfig } from "@/game/types";
 import { localizeCoachMessage, type Locale, t } from "@/i18n/messages";
 import { translateOpeningName } from "@/i18n/openings";
+import { requestGroundedExplanation } from "@/llm/client";
 import { getSharedOpeningBook } from "@/openings/book-manager";
 import {
   IndexedDbTrainingMemoryStore,
@@ -53,6 +54,7 @@ export default function HomePage() {
   const memoryStoreRef = useRef(new IndexedDbTrainingMemoryStore());
   const sessionOpeningRef = useRef<string | null>(null);
   const gameStateRef = useRef<GameState | null>(null);
+  const explanationRequestRef = useRef(0);
 
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [config, setConfig] = useState<TrainerConfig>(DEFAULT_CONFIG);
@@ -68,6 +70,8 @@ export default function HomePage() {
     startMove: 1,
   });
   const [latestAnalysis, setLatestAnalysis] = useState<MoveAnalysis | null>(null);
+  const [llmCoachMessage, setLlmCoachMessage] = useState<string | null>(null);
+  const [llmExplanationPending, setLlmExplanationPending] = useState(false);
   const [botPreview, setBotPreview] = useState<BotPreview | null>(null);
   const [evalCpWhite, setEvalCpWhite] = useState(0);
   const [evalMate, setEvalMate] = useState<number | null>(null);
@@ -129,6 +133,9 @@ export default function HomePage() {
     setBusy(true);
     setError(null);
     setLatestAnalysis(null);
+    setLlmCoachMessage(null);
+    setLlmExplanationPending(false);
+    explanationRequestRef.current += 1;
     setBotPreview(null);
     setMistakeSquares([]);
     setExploreMode(false);
@@ -271,6 +278,9 @@ export default function HomePage() {
     if (exploreMode) {
       setError(null);
       setLatestAnalysis(null);
+      setLlmCoachMessage(null);
+      setLlmExplanationPending(false);
+      explanationRequestRef.current += 1;
       setBotPreview(null);
       setMistakeSquares([]);
       setPunishmentFlash(false);
@@ -284,6 +294,9 @@ export default function HomePage() {
     setError(null);
     setBotPreview(null);
     setMistakeSquares([]);
+    setLlmCoachMessage(null);
+    setLlmExplanationPending(false);
+    const explanationRequest = ++explanationRequestRef.current;
 
     const generation = sessionGenerationRef.current;
     const isStale = () => sessionGenerationRef.current !== generation;
@@ -315,6 +328,20 @@ export default function HomePage() {
 
         setGameState(result.gameState);
         setLatestAnalysis(result.analysis);
+
+        if (result.analysis?.isMistake && result.analysis.explanationEvidence) {
+          setLlmExplanationPending(true);
+          void requestGroundedExplanation(result.analysis.explanationEvidence, locale).then(
+            (explanation) => {
+              if (!isStale() && explanationRequestRef.current === explanationRequest) {
+                setLlmExplanationPending(false);
+                if (explanation) {
+                  setLlmCoachMessage(explanation);
+                }
+              }
+            },
+          );
+        }
 
         if (result.analysis?.isMistake) {
           setMistakeSquares([uci.slice(2, 4)]);
@@ -388,6 +415,13 @@ export default function HomePage() {
     sessionRef.current?.updateConfig(next);
   }
 
+  function switchLocale(nextLocale: Locale) {
+    setLocale(nextLocale);
+    setLlmCoachMessage(null);
+    setLlmExplanationPending(false);
+    explanationRequestRef.current += 1;
+  }
+
   function undoLastMove() {
     const session = sessionRef.current;
     if (!session || busy || !gameState || gameState.stats.totalMoves <= 0) {
@@ -396,6 +430,9 @@ export default function HomePage() {
 
     setError(null);
     setLatestAnalysis(null);
+    setLlmCoachMessage(null);
+    setLlmExplanationPending(false);
+    explanationRequestRef.current += 1;
     setBotPreview(null);
     setMistakeSquares([]);
     setPunishmentFlash(false);
@@ -412,6 +449,9 @@ export default function HomePage() {
 
     setError(null);
     setLatestAnalysis(null);
+    setLlmCoachMessage(null);
+    setLlmExplanationPending(false);
+    explanationRequestRef.current += 1;
     setBotPreview(null);
     setMistakeSquares([]);
     setPunishmentFlash(false);
@@ -453,14 +493,14 @@ export default function HomePage() {
           <div className="rounded bg-[rgba(232,224,212,0.1)] p-1 text-sm">
             <button
               type="button"
-              onClick={() => setLocale("en")}
+              onClick={() => switchLocale("en")}
               className={`rounded px-2 py-1 ${locale === "en" ? "bg-[var(--accent)] text-black" : ""}`}
             >
               EN
             </button>
             <button
               type="button"
-              onClick={() => setLocale("zh")}
+              onClick={() => switchLocale("zh")}
               className={`rounded px-2 py-1 ${locale === "zh" ? "bg-[var(--accent)] text-black" : ""}`}
             >
               简体中文
@@ -483,7 +523,12 @@ export default function HomePage() {
           </button>
           <button
             type="button"
-            onClick={() => setExploreMode((value) => !value)}
+            onClick={() => {
+              setExploreMode((value) => !value);
+              setLlmCoachMessage(null);
+              setLlmExplanationPending(false);
+              explanationRequestRef.current += 1;
+            }}
             className={`rounded px-3 py-2 text-sm ${
               exploreMode
                 ? "bg-[var(--accent)] font-semibold text-black"
@@ -532,6 +577,7 @@ export default function HomePage() {
 
         <aside className="space-y-3">
           <CoachPanel
+            key={explanationRequestRef.current}
             openingName={
               openingMeta.name
                 ? translateOpeningName(openingMeta.name, locale)
@@ -549,6 +595,8 @@ export default function HomePage() {
                     locale,
                   )
             }
+            llmMessage={llmCoachMessage}
+            llmPending={llmExplanationPending}
             botPreview={botPreview}
             punishmentLineSan={latestAnalysis?.punishmentLineSan ?? []}
             punishmentShake={punishmentShake}

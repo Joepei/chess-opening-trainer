@@ -1,6 +1,7 @@
 import { Chess, type Move } from "chess.js";
 
 import { StockfishEngine } from "@/engine/stockfish-api";
+import { buildExplanationEvidence } from "@/llm/evidence";
 import { OpeningBook } from "@/openings/book-manager";
 import { NoopTrainingMemoryStore, type TrainingMemoryStore } from "@/training-memory/memory-store";
 
@@ -182,7 +183,17 @@ export class GameSession {
       // named somewhere in the ECO data is not evidence a move is good — plenty
       // of dubious lines carry names — so those still get checked.
       if (!isSelectedBookMove) {
-        analysis = await this.detector.analyzeMove(fenBefore, moveUci, userMove.san);
+        const detected = await this.detector.analyzeMove(fenBefore, moveUci, userMove.san);
+        analysis = {
+          ...detected,
+          explanationEvidence: buildExplanationEvidence({
+            analysis: detected,
+            positionWasInBook: wasInBookBefore,
+            playedMoveWasInBook: isSelectedBookMove,
+            bookAlternativesSan: bookMovesBefore.map((move) => move.san),
+            materialLossThreshold: this.config.materialLossThreshold,
+          }),
+        };
       }
 
       if (analysis?.isMistake && analysis.isPunishable && analysis.punishmentLine.length > 0) {

@@ -80,6 +80,9 @@ export class PunishmentDetector {
         punishmentLineSan: [],
         continuationLineSan,
         materialChange: 0,
+        mateIn: null,
+        playedMoveUci: userMoveUci,
+        playedMoveSan: userMoveSan,
         reasonDetails,
         explanation: `${userMoveSan} is within the tolerated eval drop.`,
       };
@@ -112,6 +115,9 @@ export class PunishmentDetector {
       punishmentLineSan: punishmentLine.movesSan,
       continuationLineSan,
       materialChange: materialLoss,
+      mateIn: mateAfter !== null && mateAfter < 0 ? Math.abs(mateAfter) : null,
+      playedMoveUci: userMoveUci,
+      playedMoveSan: userMoveSan,
       reasonDetails,
       explanation: buildCoachExplanation({
         userMoveSan,

@@ -10,6 +10,8 @@ export function CoachPanel({
   eco,
   mode,
   message,
+  llmMessage = null,
+  llmPending = false,
   botPreview = null,
   punishmentLineSan = [],
   punishmentShake = false,
@@ -19,13 +21,20 @@ export function CoachPanel({
   eco?: string | null;
   mode: "book" | "punishment" | "free_play";
   message: string;
+  llmMessage?: string | null;
+  llmPending?: boolean;
   botPreview?: BotPreview | null;
   punishmentLineSan?: string[];
   punishmentShake?: boolean;
   locale: Locale;
 }) {
   const [lineIndex, setLineIndex] = useState(0);
+  const [messageSource, setMessageSource] = useState<"deterministic" | "llm">("deterministic");
   const safeLineIndex = Math.min(lineIndex, Math.max(0, punishmentLineSan.length - 1));
+  const hasLlmPage = llmMessage !== null || llmPending;
+  const displayedMessage = messageSource === "llm" && hasLlmPage
+    ? llmMessage ?? t(locale, "aiExplanationPending")
+    : message;
 
   const modeMeta = useMemo(() => {
     if (mode === "book") {
@@ -61,14 +70,51 @@ export function CoachPanel({
         </span>
       </div>
 
-      <div className="gold-border rounded-lg bg-[rgba(30,30,56,0.8)] p-3" aria-live="polite">
-        <p
-          key={message}
-          className="typewriter-text text-sm leading-relaxed text-[var(--text-primary)]"
-          style={{ "--type-duration-ms": "520ms" } as CSSProperties}
-        >
-          {message}
-        </p>
+      <div className="gold-border rounded-lg bg-[rgba(30,30,56,0.8)] p-3">
+        {hasLlmPage ? (
+          <div
+            className="mb-3 grid grid-cols-2 gap-1 rounded-md bg-[rgba(232,224,212,0.07)] p-1"
+            role="tablist"
+            aria-label="Explanation source"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={messageSource === "deterministic"}
+              onClick={() => setMessageSource("deterministic")}
+              className={`rounded px-2 py-1.5 text-xs font-semibold transition-colors ${
+                messageSource === "deterministic"
+                  ? "bg-[var(--accent)] text-black"
+                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              {t(locale, "deterministicEvidence")}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={messageSource === "llm"}
+              onClick={() => setMessageSource("llm")}
+              className={`rounded px-2 py-1.5 text-xs font-semibold transition-colors ${
+                messageSource === "llm"
+                  ? "bg-[var(--accent)] text-black"
+                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              {t(locale, "aiCoach")}
+              {llmPending && !llmMessage ? " \u00b7\u00b7\u00b7" : ""}
+            </button>
+          </div>
+        ) : null}
+        <div aria-live="polite" role="tabpanel">
+          <p
+            key={`${messageSource}:${displayedMessage}`}
+            className="typewriter-text text-sm leading-relaxed text-[var(--text-primary)]"
+            style={{ "--type-duration-ms": "520ms" } as CSSProperties}
+          >
+            {displayedMessage}
+          </p>
+        </div>
       </div>
 
       {botPreview && botPreview.options.length > 0 ? (
